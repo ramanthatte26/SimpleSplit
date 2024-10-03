@@ -9,6 +9,8 @@ import com.simplesplit.service.SplitRuleService;
 
 import java.util.Scanner;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -23,10 +25,12 @@ public class SimpleSplitApp {
         while (true) {
             System.out.println("\n--- SimpleSplit App ---");
             System.out.println("1. Add User");
-            System.out.println("2. Add Transaction");
-            System.out.println("3. View All Transactions");
-            System.out.println("4. View User Balance");
-            System.out.println("5. Exit");
+            System.out.println("2. View All Users");
+            System.out.println("3. Delete User");
+            System.out.println("4. Add Transaction");
+            System.out.println("5. View All Transactions");
+            System.out.println("6. View Debt Summary");
+            System.out.println("7. Exit");
             System.out.print("Choose an option: ");
 
             int choice = scanner.nextInt();
@@ -38,22 +42,31 @@ public class SimpleSplitApp {
                         addUser();
                         break;
                     case 2:
-                        addTransaction();
+                        viewAllUsers();
                         break;
                     case 3:
-                        viewAllTransactions();
+                        deleteUser();
                         break;
                     case 4:
-                        viewUserBalance();
+                        addTransaction();
                         break;
                     case 5:
+                        viewAllTransactions();
+                        break;
+                    case 6:
+                        viewDebtSummary();
+                        break;
+                    case 7:
                         System.out.println("Exiting SimpleSplit. Goodbye!");
                         return;
                     default:
                         System.out.println("Invalid option. Please try again.");
                 }
             } catch (SQLException e) {
-                System.out.println("An error occurred: " + e.getMessage());
+                System.out.println("A database error occurred: " + e.getMessage());
+            } catch (RuntimeException e) {
+                System.out.println("An unexpected error occurred: " + e.getMessage());
+                e.printStackTrace();
             }
         }
     }
@@ -67,6 +80,24 @@ public class SimpleSplitApp {
         User user = new User(0, name, email, LocalDate.now().atStartOfDay());
         userService.addUser(user);
         System.out.println("User added successfully!");
+    }
+
+    private static void viewAllUsers() throws SQLException {
+        List<User> users = userService.getAllUsers();
+        System.out.println("\nCurrent Users:");
+        for (User user : users) {
+            System.out.println(user.getId() + ": " + user.getUsername() + " (" + user.getEmail() + ")");
+        }
+    }
+
+    private static void deleteUser() throws SQLException {
+        viewAllUsers();
+        System.out.print("Enter the ID of the user to delete: ");
+        int userId = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
+
+        userService.deleteUser(userId);
+        System.out.println("User deleted successfully!");
     }
 
     private static void addTransaction() throws SQLException {
@@ -112,45 +143,45 @@ public class SimpleSplitApp {
     private static void viewAllTransactions() throws SQLException {
         List<Transaction> transactions = transactionService.getAllTransactions();
         for (Transaction transaction : transactions) {
-            System.out.println(transaction);
+            User payer = userService.getUserById(transaction.getPayerId());
+            System.out.println(transaction + " (Paid by: " + payer.getUsername() + ")");
             List<SplitRule> splitRules = splitRuleService.getSplitRulesByTransactionId(transaction.getId());
             for (SplitRule splitRule : splitRules) {
                 User user = userService.getUserById(splitRule.getUserId());
-                System.out.println("  - " + user.getEmail() + ": " + splitRule.getAmount());
+                System.out.println("  - " + user.getUsername() + ": " + splitRule.getAmount());
             }
         }
     }
 
-    private static void viewUserBalance() throws SQLException {
-        System.out.print("Enter user email: ");
-        String email = scanner.nextLine();
+    private static void viewDebtSummary() throws SQLException {
+        Map<Integer, Map<Integer, BigDecimal>> debts = new HashMap<>();
+        List<User> users = userService.getAllUsers();
+        List<Transaction> transactions = transactionService.getAllTransactions();
 
-        User user = userService.getAllUsers().stream()
-                .filter(u -> u.getEmail().equals(email))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-
-        BigDecimal balance = calculateUserBalance(user);
-        System.out.println("Balance for " + email + ": " + balance);
-    }
-
-    private static BigDecimal calculateUserBalance(User user) throws SQLException {
-        BigDecimal balance = BigDecimal.ZERO;
-
-        List<Transaction> allTransactions = transactionService.getAllTransactions();
-        for (Transaction transaction : allTransactions) {
-            if (transaction.getPayerId() == user.getId()) {
-                balance = balance.add(transaction.getAmount());
-            }
-
+        for (Transaction transaction : transactions) {
+            User payer = userService.getUserById(transaction.getPayerId());
             List<SplitRule> splitRules = splitRuleService.getSplitRulesByTransactionId(transaction.getId());
+
             for (SplitRule splitRule : splitRules) {
-                if (splitRule.getUserId() == user.getId()) {
-                    balance = balance.subtract(splitRule.getAmount());
+                User debtor = userService.getUserById(splitRule.getUserId());
+                if (payer.getId() != debtor.getId()) {
+                    debts.computeIfAbsent(debtor.getId(), k -> new HashMap<>());
+                    debts.get(debtor.getId()).merge(payer.getId(), splitRule.getAmount(), BigDecimal::add);
                 }
             }
         }
 
-        return balance;
+        System.out.println("\nDebt Summary:");
+        for (User debtor : users) {
+            Map<Integer, BigDecimal> debtorDebts = debts.get(debtor.getId());
+            if (debtorDebts != null) {
+                for (User creditor : users) {
+                    BigDecimal debt = debtorDebts.get(creditor.getId());
+                    if (debt != null && debt.compareTo(BigDecimal.ZERO) > 0) {
+                        System.out.printf("%s owes %s: %.2f%n", debtor.getUsername(), creditor.getUsername(), debt);
+                    }
+                }
+            }
+        }
     }
 }
