@@ -56,10 +56,3 @@ Execute the following command to run the tests:
 mvn test
 ```
 
-## Contributing
-
-Please read CONTRIBUTING.md for details on our code of conduct and the process for submitting pull requests.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE.md file for details.
