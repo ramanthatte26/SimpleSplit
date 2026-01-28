@@ -1,35 +1,71 @@
 package com.simplesplit.service;
 
-import com.simplesplit.dao.TransactionDAO;
+import com.simplesplit.model.SplitRule;
 import com.simplesplit.model.Transaction;
+import com.simplesplit.model.User;
+import com.simplesplit.repository.SplitRuleRepository;
+import com.simplesplit.repository.TransactionRepository;
+import com.simplesplit.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.SQLException;
+import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+@Service
 public class TransactionService {
-    private TransactionDAO transactionDAO;
 
-    public TransactionService() {
-        this.transactionDAO = new TransactionDAO();
+    @Autowired
+    private TransactionRepository transactionRepository;
+
+    @Autowired
+    private SplitRuleRepository splitRuleRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    public List<Transaction> getAllTransactions() {
+        return transactionRepository.findAll();
     }
 
-    public void addTransaction(Transaction transaction) throws SQLException {
-        transactionDAO.addTransaction(transaction);
+    @Transactional
+    public Transaction createTransaction(Transaction transaction) {
+        // Ensure payer exists
+        User payer = userRepository.findById(transaction.getPayer().getId())
+                .orElseThrow(() -> new RuntimeException("Payer not found"));
+        transaction.setPayer(payer);
+
+        // Fix bidirectional relationship for split rules
+        if (transaction.getSplitRules() != null) {
+            for (SplitRule rule : transaction.getSplitRules()) {
+                rule.setTransaction(transaction);
+                User debtor = userRepository.findById(rule.getUser().getId())
+                        .orElseThrow(() -> new RuntimeException("Debtor not found"));
+                rule.setUser(debtor);
+            }
+        }
+
+        return transactionRepository.save(transaction);
     }
 
-    public Transaction getTransactionById(int id) throws SQLException {
-        return transactionDAO.getTransactionById(id);
-    }
+    public Map<String, BigDecimal> getBalances() {
+        List<User> users = userRepository.findAll();
+        Map<String, BigDecimal> balances = new HashMap<>();
 
-    public List<Transaction> getAllTransactions() throws SQLException {
-        return transactionDAO.getAllTransactions();
-    }
+        for (User user : users) {
+            BigDecimal paid = transactionRepository.findByPayerId(user.getId()).stream()
+                    .map(Transaction::getAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-    public void updateTransaction(Transaction transaction) throws SQLException {
-        transactionDAO.updateTransaction(transaction);
-    }
+            BigDecimal owed = splitRuleRepository.findByUserId(user.getId()).stream()
+                    .map(SplitRule::getAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-    public void deleteTransaction(int id) throws SQLException {
-        transactionDAO.deleteTransaction(id);
+            balances.put(user.getUsername(), paid.subtract(owed));
+        }
+        return balances;
     }
 }

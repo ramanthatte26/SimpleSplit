@@ -1,60 +1,32 @@
 package com.simplesplit.model;
 
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
 import java.math.BigDecimal;
 
+@Entity
+@Table(name = "split_rules")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class SplitRule {
-    private int id;
-    private int transactionId;
-    private int userId;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne
+    @JoinColumn(name = "transaction_id", nullable = false)
+    @JsonBackReference
+    private Transaction transaction;
+
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @Column(nullable = false)
     private BigDecimal amount;
-
-    public SplitRule(int id, int transactionId, int userId, BigDecimal amount) {
-        this.id = id;
-        this.transactionId = transactionId;
-        this.userId = userId;
-        this.amount = amount;
-    }
-
-    // Getters and setters
-    public int getId() {
-        return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public int getTransactionId() {
-        return transactionId;
-    }
-
-    public void setTransactionId(int transactionId) {
-        this.transactionId = transactionId;
-    }
-
-    public int getUserId() {
-        return userId;
-    }
-
-    public void setUserId(int userId) {
-        this.userId = userId;
-    }
-
-    public BigDecimal getAmount() {
-        return amount;
-    }
-
-    public void setAmount(BigDecimal amount) {
-        this.amount = amount;
-    }
-
-    @Override
-    public String toString() {
-        return "SplitRule{" +
-                "id=" + id +
-                ", transactionId=" + transactionId +
-                ", userId=" + userId +
-                ", amount=" + amount +
-                '}';
-    }
 }
