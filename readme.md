@@ -1,58 +1,53 @@
-# SimpleSplit
+# SimpleSplit - Modern Shared Expense Manager
 
-SimpleSplit is a Java application for managing shared expenses among friends or groups.
+SimpleSplit has been modernized into a full-stack web application using **Spring Boot** for the backend and **React** for the frontend.
 
-## Features
-
-- Add users to the system
-- Record transactions and split expenses
-- View transaction history
-- Check individual user balances
+## Tech Stack
+-   **Backend**: Java 17+, Spring Boot 3.x, Spring Data JPA, H2 (Dev) / MySQL (Prod).
+-   **Frontend**: React, Vite, Axios, Modern CSS.
 
 ## Prerequisites
+-   Java 17 or higher
+-   Maven
+-   Node.js & npm
 
-- Java 11 or higher
-- Maven
-- MySQL
+## How to Run
 
-## Setup
+### 1. Backend (Spring Boot)
+The backend runs on port `8080`.
 
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/simplesplit.git
-   ```
-
-2. Navigate to the project directory:
-   ```
-   cd simplesplit
-   ```
-
-3. Set up the MySQL database:
-   - Create a new database named `simplesplit`
-   - Update the database connection details in `src/main/resources/database.properties`
-
-4. Build the project:
-   ```
-   mvn clean install
-   ```
-
-5. Run the application:
-   ```
-   java -jar target/simplesplit-1.0-SNAPSHOT.jar
-   ```
-
-## Usage
-
-Follow the on-screen prompts to:
-- Add users
-- Add transactions and split expenses
-- View all transactions
-- Check user balances
-
-## Running Tests
-
-Execute the following command to run the tests:
-```
-mvn test
+```bash
+# From the root directory
+mvn spring-boot:run
 ```
 
+Alternatively, you can build and run the JAR:
+```bash
+mvn clean package -DskipTests
+java -jar target/SimpleSplit-1.0-SNAPSHOT.jar
+```
+
+*Note: By default, it uses an in-memory H2 database. Data will be lost on restart. To use MySQL, update `src/main/resources/application.properties`.*
+
+### 2. Frontend (React)
+The frontend runs on port `5173` (default for Vite).
+
+```bash
+# Open a new terminal
+cd frontend
+
+# Install dependencies (first time only)
+npm install
+
+# Start the development server
+npm run dev
+```
+
+### 3. Usage
+Once both servers are running, open your browser and navigate to:
+**http://localhost:5173**
+
+## Features
+-   **Dashboard**: View current balances (who owes who).
+-   **User Management**: Add new friends to the group.
+-   **Add Expense**: Record a transaction and split it among selected friends.
