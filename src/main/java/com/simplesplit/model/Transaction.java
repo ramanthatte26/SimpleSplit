@@ -1,72 +1,39 @@
 package com.simplesplit.model;
 
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
+@Entity
+@Table(name = "transactions")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class Transaction {
-    private int id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
     private String description;
+
+    @Column(nullable = false)
     private BigDecimal amount;
+
+    @Column(nullable = false)
     private LocalDate date;
-    private int payerId;
 
-    public Transaction(int id, String description, BigDecimal amount, LocalDate date, int payerId) {
-        this.id = id;
-        this.description = description;
-        this.amount = amount;
-        this.date = date;
-        this.payerId = payerId;
-    }
+    @ManyToOne
+    @JoinColumn(name = "payer_id", nullable = false)
+    private User payer;
 
-    // Getters and setters
-    public int getId() {
-        return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public BigDecimal getAmount() {
-        return amount;
-    }
-
-    public void setAmount(BigDecimal amount) {
-        this.amount = amount;
-    }
-
-    public LocalDate getDate() {
-        return date;
-    }
-
-    public void setDate(LocalDate date) {
-        this.date = date;
-    }
-
-    public int getPayerId() {
-        return payerId;
-    }
-
-    public void setPayerId(int payerId) {
-        this.payerId = payerId;
-    }
-
-    @Override
-    public String toString() {
-        return "Transaction{" +
-                "id=" + id +
-                ", description='" + description + '\'' +
-                ", amount=" + amount +
-                ", date=" + date +
-                ", payerId=" + payerId +
-                '}';
-    }
+    @OneToMany(mappedBy = "transaction", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private List<SplitRule> splitRules = new ArrayList<>();
 }
